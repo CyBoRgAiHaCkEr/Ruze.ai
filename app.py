@@ -7,7 +7,7 @@ from groq import Groq
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
 # --- 1. CORE SYSTEM CONFIG ---
-st.set_page_config(page_title="RUZE.AI | MULTI-ENGINE", layout="wide")
+st.set_page_config(page_title="RUZE.AI", layout="wide")
 
 client = Groq(api_key=st.secrets.get("GROQ_API_KEY", "YOUR_KEY"))
 
@@ -66,9 +66,9 @@ def ruze_analyze(user_input):
         st.session_state.system_log.append(f"[{timestamp}] ERR >> ENGINE_LINK_FAILURE")
 
 # --- 5. VISION & LAYOUT ---
-st.title("🛡️ RUZE INDUSTRIAL HUD")
+st.title(" RUZE.AI")
 
-with st.expander("🎥 VISUAL SENSORS", expanded=False):
+with st.expander("", expanded=False):
     webrtc_streamer(
         key="multi-stream",
         mode=WebRtcMode.SENDRECV,
@@ -84,3 +84,4 @@ for log in st.session_state.system_log[-10:]:
 if prompt := st.chat_input("ENTER PARAMETERS..."):
     ruze_analyze(prompt)
     st.rerun()
+
