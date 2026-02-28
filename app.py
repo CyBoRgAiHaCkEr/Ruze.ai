@@ -6,98 +6,104 @@ import time
 from groq import Groq
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
-# --- SYSTEM CONFIGURATION ---
+# --- 1. CORE SYSTEM CONFIG ---
 st.set_page_config(page_title="RUZE.AI | INDUSTRIAL INTELLIGENCE", layout="wide")
 
-# Groq Llama 4 Maverick
+# Connection to Llama 4 Maverick
 client = Groq(api_key=st.secrets.get("GROQ_API_KEY", "YOUR_KEY"))
 MAVERICK_MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"
 
-# --- ROBOTIC / INDUSTRIAL INTERFACE STYLING ---
+# --- 2. ROBOTIC UI STYLING (CSS) ---
 st.markdown("""
     <style>
-    /* Global Robotic Font */
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
     
-    html, body, [class*="st-"] {
-        font-family: 'JetBrains Mono', 'Courier New', monospace !important;
-        background-color: #0d0d0d;
+    /* Force Robotic Monospaced Font */
+    html, body, [class*="st-"], .stMarkdown {
+        font-family: 'JetBrains Mono', monospace !important;
+        background-color: #050505;
         color: #00ffcc;
     }
-
-    .main { background-color: #0d0d0d; }
     
-    /* Industrial Data Cards */
-    .data-card { 
-        border: 1px solid #00ffcc; 
-        padding: 12px; 
-        background: rgba(0, 255, 204, 0.05); 
-        border-left: 5px solid #00ffcc;
-        margin-bottom: 10px;
+    /* Sidebar Industrial Look */
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+        border-right: 1px solid #00ffcc;
     }
 
-    /* Terminal-style input */
-    .stChatInputContainer {
-        border: 1px solid #00ffcc !important;
-        background-color: #000 !important;
-    }
+    /* Terminal Log Styling */
+    .stCodeBlock { border: 1px solid #00ffcc !important; }
     
-    /* Header styling */
-    h1, h2, h3 {
-        text-transform: uppercase;
-        letter-spacing: 2px;
+    /* Glow effect for Headers */
+    h1, h2 {
         color: #fff;
-        text-shadow: 0 0 10px #00ffcc;
+        text-shadow: 0 0 12px #00ffcc;
+        text-transform: uppercase;
     }
     </style>
     """, unsafe_allow_html=True)
 
-if "system_log" not in st.session_state:
-    st.session_state.system_log = [f"[{time.strftime('%H:%M:%S')}] RUZE.AI INIT: RUZAN DARUWALLA AUTHENTICATED"]
+# --- 3. SIDEBAR: LOGO & TELEMETRY ---
+with st.sidebar:
+    try:
+        st.image("logo.png", use_container_width=True)
+    except:
+        st.subheader("💎 RUZE.AI")
+    
+    st.markdown("---")
+    st.markdown("### 📊 SYSTEM STATUS")
+    st.write(f"**OPERATOR:** RUZAN DARUWALLA")
+    st.write(f"**CORE:** MAVERICK v4.0")
+    st.write(f"**STATUS:** <span style='color:#00ff88'>ADAPTIVE_ACTIVE</span>", unsafe_allow_html=True)
+    st.write(f"**LATENCY:** 14ms")
+    st.markdown("---")
+    st.caption("Industrial Engineering Logic Engine")
 
-# --- INTELLIGENT ADAPTIVE ANALYSIS ---
+# --- 4. LOGIC & DATA STREAM ---
+if "system_log" not in st.session_state:
+    st.session_state.system_log = [f"[{time.strftime('%H:%M:%S')}] RUZE.AI: UPLINK ESTABLISHED"]
+
 def ruze_analyze(user_input):
-    st.session_state.system_log.append(f"SYS_IN>> {user_input.upper()}")
+    st.session_state.system_log.append(f"REQ>> {user_input.upper()}")
     try:
         resp = client.chat.completions.create(
             model=MAVERICK_MODEL,
             messages=[
-                {"role": "system", "content": "You are RUZE.AI. Your voice is robotic, precise, and highly intelligent. You assist Ruzan Daruwalla in Industrial Engineering. Use data-driven language and adaptive logic."},
+                {"role": "system", "content": "You are RUZE.AI. You are an expert Industrial Engineering Intelligence. Your tone is robotic, technical, and precise. Assist Ruzan Daruwalla with intelligent, adaptive solutions."},
                 {"role": "user", "content": user_input}
             ]
         )
         ans = resp.choices[0].message.content
-        st.session_state.system_log.append(f"SYS_OUT>> {ans}")
+        st.session_state.system_log.append(f"RES>> {ans}")
     except:
-        st.session_state.system_log.append("SYS_ERR>> DATA LINK SEVERED")
+        st.session_state.system_log.append("ERR>> DATA_LINK_TIMEOUT")
 
-# --- ROBOTIC VISION OVERLAY ---
+# --- 5. VISION SYSTEM (ROBOTIC HUD) ---
 def industrial_vision_callback(frame):
     img = frame.to_ndarray(format="bgr24")
     h, w = img.shape[:2]
     
-    # Robotic Scanning Lines
-    color = (204, 255, 0) # Cyan-Green (BGR)
-    cv2.line(img, (0, int(time.time() * 50) % h), (w, int(time.time() * 50) % h), (0, 255, 204), 1)
+    # Scanning Line Effect
+    scan_y = int(time.time() * 60) % h
+    cv2.line(img, (0, scan_y), (w, scan_y), (0, 255, 204), 1)
     
-    # Angular Brackets (Robotic Target)
-    length = 40
-    thickness = 2
-    # Top Left
-    cv2.line(img, (30, 30), (30+length, 30), color, thickness)
-    cv2.line(img, (30, 30), (30, 30+length), color, thickness)
-    # Bottom Right
-    cv2.line(img, (w-30, h-30), (w-30-length, h-30), color, thickness)
-    cv2.line(img, (w-30, h-30), (w-30, h-30-length), color, thickness)
+    # Targeting Brackets
+    color = (204, 255, 0) # Cyan in BGR
+    l = 40
+    # Corner markings
+    cv2.line(img, (40, 40), (40+l, 40), color, 2)
+    cv2.line(img, (40, 40), (40, 40+l), color, 2)
+    cv2.line(img, (w-40, h-40), (w-40-l, h-40), color, 2)
+    cv2.line(img, (w-40, h-40), (w-40, h-40-l), color, 2)
     
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# --- INTERFACE ---
-st.title("⚙️ RUZE.AI | MAVERICK v4.0")
+# --- 6. MAIN INTERFACE ---
+st.title("🛡️ RUZE INDUSTRIAL HUD")
 
-col1, col2 = st.columns([2, 1])
+col_vid, col_log = st.columns([2, 1])
 
-with col1:
+with col_vid:
     webrtc_streamer(
         key="industrial-stream",
         mode=WebRtcMode.SENDRECV,
@@ -106,14 +112,11 @@ with col1:
         rtc_configuration=RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
     )
 
-with col2:
-    st.markdown("<div class='data-card'><b>OPERATOR:</b> RUZAN DARUWALLA<br><b>DEPT:</b> INDUSTRIAL ENGINEERING<br><b>STATUS:</b> ADAPTIVE MODE ACTIVE</div>", unsafe_allow_html=True)
-    
-    st.write("---")
+with col_log:
     st.write("**COMMAND STREAM**")
-    for log in st.session_state.system_log[-6:]:
+    for log in st.session_state.system_log[-8:]:
         st.code(log, language="bash")
 
-if prompt := st.chat_input("ENTER COMMAND..."):
+if prompt := st.chat_input("ENTER SYSTEM COMMAND..."):
     ruze_analyze(prompt)
     st.rerun()
