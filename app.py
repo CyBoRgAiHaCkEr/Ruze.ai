@@ -1,22 +1,43 @@
 import streamlit as st
-import numpy as np
-import cv2
-import av
+import sqlite3
 import time
 from groq import Groq
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
-# --- 1. CONFIGURATION & STATE INITIALIZATION ---
-st.set_page_config(page_title="RUZE.AI ", layout="wide")
+# --- 1. DATABASE SYSTEM (PERMANENT STORAGE) ---
+def init_db():
+    conn = sqlite3.connect('ruze_memory.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS logs 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  timestamp TEXT, 
+                  engine TEXT, 
+                  sender TEXT, 
+                  message TEXT)''')
+    conn.commit()
+    conn.close()
 
-# Initialize Session State "Vault" to prevent forgetting
-if "history" not in st.session_state:
-    st.session_state.history = []
-if "active_engine" not in st.session_state:
-    st.session_state.active_engine = "Llama 4 Maverick"
-if "operator" not in st.session_state:
-    st.session_state.operator = "Ruzan Daruwalla"
+def save_log(engine, sender, message):
+    conn = sqlite3.connect('ruze_memory.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO logs (timestamp, engine, sender, message) VALUES (?, ?, ?, ?)",
+              (time.strftime('%Y-%m-%d %H:%M:%S'), engine, sender, message))
+    conn.commit()
+    conn.close()
 
+def load_logs(limit=15000):
+    conn = sqlite3.connect('ruze_memory.db')
+    c = conn.cursor()
+    # Loading last 15,000 messages
+    c.execute("SELECT timestamp, sender, message FROM logs ORDER BY id DESC LIMIT ?", (limit,))
+    data = c.fetchall()
+    conn.close()
+    return data[::-1] # Return in chronological order
+
+# Initialize DB on startup
+init_db()
+
+# --- 2. CORE CONFIG ---
+st.set_page_config(page_title="RUZE.AI | ARCHIVE MODE", layout="wide")
 client = Groq(api_key=st.secrets.get("GROQ_API_KEY", "YOUR_KEY"))
 
 MODELS = {
@@ -25,79 +46,55 @@ MODELS = {
     "GPT OSS 120B": "openai/gpt-oss-120b"
 }
 
-# --- 2. FLUID TERMINAL CSS (NO SQUISHING) ---
-st.markdown(f"""
+# --- 3. ROBOTIC UI ---
+st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
-    
-    html, body, [class*="st-"] {{
-        font-family: 'JetBrains Mono', monospace !important;
-        background-color: #050505;
-        color: #e0e0e0;
-    }}
-
-    .terminal-entry {{
-        background: #000;
-        border-left: 4px solid #00ffcc;
-        padding: 18px;
-        margin: 15px 0;
-        white-space: pre-wrap;       
-        word-wrap: break-word;       
-        font-size: 1rem;
-        line-height: 1.6;
-    }}
-
-    .meta {{ color: #555; font-size: 0.8rem; margin-bottom: 5px; }}
-    .source {{ color: #00ffcc; font-weight: bold; text-transform: uppercase; }}
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap');
+    html, body, [class*="st-"] { font-family: 'JetBrains Mono', monospace !important; background-color: #050505; color: #00ffcc; }
+    .terminal-entry { border-left: 3px solid #00ffcc; padding: 10px; margin: 10px 0; background: #000; white-space: pre-wrap; word-wrap: break-word; }
+    .meta { color: #555; font-size: 0.8rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ANALYTICS ENGINE ---
-def run_analysis(user_input):
-    # Save user input immediately
-    t = time.strftime('%H:%M:%S')
-    st.session_state.history.append({"time": t, "source": st.session_state.operator, "content": user_input})
-    
-    try:
-        resp = client.chat.completions.create(
-            model=MODELS[st.session_state.active_engine],
-            messages=[
-                {"role": "system", "content": "You are RUZE.AI. Robotic, intelligent Industrial Engineering assistant for Ruzan Daruwalla."},
-                {"role": "user", "content": user_input}
-            ]
-        )
-        # Save AI response immediately
-        st.session_state.history.append({"time": t, "source": st.session_state.active_engine, "content": resp.choices[0].message.content})
-    except:
-        st.session_state.history.append({"time": t, "source": "SYSTEM", "content": "CRITICAL: UPLINK FAILED"})
-
-# --- 4. SIDEBAR (CONTROLS) ---
+# --- 4. SIDEBAR CONTROLS ---
 with st.sidebar:
     st.image("logo.png", use_container_width=True)
-    st.markdown("---")
-    # Link selectbox directly to session state
-    st.session_state.active_engine = st.selectbox("CORE ENGINE", list(MODELS.keys()), index=list(MODELS.keys()).index(st.session_state.active_engine))
-    
-    if st.button("♻️ RESET TERMINAL"):
-        st.session_state.history = []
+    active_engine = st.selectbox("CORE ENGINE", list(MODELS.keys()))
+    st.write(f"OPERATOR: Ruzan Daruwalla")
+    if st.button("🗑️ WIPE DATABASE"):
+        conn = sqlite3.connect('ruze_memory.db')
+        conn.cursor().execute("DELETE FROM logs")
+        conn.commit()
+        conn.close()
         st.rerun()
 
-# --- 5. MAIN DISPLAY ---
-st.title(" RUZE Ai")
+# --- 5. MAIN LOGIC ---
+st.title("🛡️ RUZE.AI // DEEP MEMORY TERMINAL")
 
-with st.expander("🎥 SENSOR FEED"):
-    webrtc_streamer(key="industrial-cam", mode=WebRtcMode.SENDRECV)
+# Analysis Function
+def run_analysis(prompt):
+    save_log(active_engine, "Ruzan Daruwalla", prompt)
+    try:
+        resp = client.chat.completions.create(
+            model=MODELS[active_engine],
+            messages=[{"role": "system", "content": "Industrial Intelligence Ruze.ai. Professional engineering assistant."},
+                      {"role": "user", "content": prompt}]
+        )
+        save_log(active_engine, "RUZE.AI", resp.choices[0].message.content)
+    except:
+        save_log(active_engine, "SYSTEM", "UPLINK ERROR")
 
-# Render history from memory
-for entry in st.session_state.history:
+# Displaying Logs (Scrollable)
+logs = load_logs()
+for ts, sender, msg in logs:
     st.markdown(f"""
     <div class="terminal-entry">
-        <div class="meta">[{entry['time']}] <span class="source">{entry['source']}</span></div>
-        {entry['content']}
+        <div class="meta">[{ts}] {sender} >></div>
+        {msg}
     </div>
     """, unsafe_allow_html=True)
 
-# Command Input
-if prompt := st.chat_input("ENTER ENGINEERING PARAMETERS..."):
+# Input
+if prompt := st.chat_input("ENTER ENGINEERING DATA..."):
     run_analysis(prompt)
     st.rerun()
