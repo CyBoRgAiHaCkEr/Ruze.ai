@@ -1,5 +1,4 @@
-import streamlit as st
-import sqlite3
+import streamlit as st 
 import time
 from groq import Groq
 
