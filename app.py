@@ -41,7 +41,6 @@ st.set_page_config(page_title="RUZE.AI | ARCHIVE MODE", layout="wide")
 client = Groq(api_key=st.secrets.get("GROQ_API_KEY", "YOUR_KEY"))
 
 MODELS = {
-    "Llama 4 Maverick": "meta-llama/llama-4-maverick-17b-128e-instruct",
     "Llama 4 Scout": "meta-llama/llama-4-scout-17b-16e-instruct",
     "GPT OSS 120B": "openai/gpt-oss-120b"
 }
