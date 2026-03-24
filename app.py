@@ -1,6 +1,7 @@
 import streamlit as st 
 import time
 from groq import Groq
+import sqlite3
 
 # --- 1. DATABASE SYSTEM (PERMANENT STORAGE) ---
 def init_db():
